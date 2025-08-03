@@ -1,0 +1,64 @@
+# Sekcija za definisanje servisa (kontejnera)
+services:
+  # Servis za vašu Spring Boot backend aplikaciju
+  backend:
+    build: ./back/fitnes/fitnes
+    container_name: backend-app
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/${MYSQL_DATABASE}?useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
+      - JWT_SECRET=${JWT_S}
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+    # Dodat healthcheck za backend aplikaciju.
+    # Proveravamo da li je aplikacija dostupna na portu 8080.
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Servis za MySQL bazu podataka
+  db:
+    image: mysql:8.0
+    container_name: mysql-db
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-network
+
+  # Frontend aplikacija
+  frontend:
+    build: ./front/fitness-app-frontend
+    container_name: frontend-app
+    ports:
+      - "3000:80"
+  
+    restart: unless-stopped
+    networks:
+      - app-network
+
+# Sekcija za definisanje eksternih mreža
+networks:
+  app-network:
+    driver: bridge
