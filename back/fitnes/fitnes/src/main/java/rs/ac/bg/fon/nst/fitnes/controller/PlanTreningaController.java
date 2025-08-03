@@ -7,10 +7,12 @@ package rs.ac.bg.fon.nst.fitnes.controller;
 
 
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import rs.ac.bg.fon.nst.fitnes.dto.PlanTreningaGenerationRequest;
 import rs.ac.bg.fon.nst.fitnes.dto.PlanTreningaRequest;
 import rs.ac.bg.fon.nst.fitnes.dto.PlanTreningaResponse;
 import rs.ac.bg.fon.nst.fitnes.service.PlanTreningaService;
@@ -50,6 +52,11 @@ public class PlanTreningaController {
         return new ResponseEntity<>(createdPlan, HttpStatus.CREATED);
     }
     
+    
+       @PostMapping("/generatedPlan")
+    public ResponseEntity<List<PlanTreningaResponse>> generatePlanTreninga(@RequestBody PlanTreningaGenerationRequest request){
+        return new ResponseEntity<>(planTreningaService.generatePersonalizedPlan(request),HttpStatus.OK);
+    }
    
 }
 
