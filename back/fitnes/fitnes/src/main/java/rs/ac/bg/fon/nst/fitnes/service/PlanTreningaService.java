@@ -8,7 +8,6 @@ package rs.ac.bg.fon.nst.fitnes.service;
 
 
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,6 +24,7 @@ import rs.ac.bg.fon.nst.fitnes.domain.PlanTreninga;
 import rs.ac.bg.fon.nst.fitnes.domain.PlanVezbe;
 import rs.ac.bg.fon.nst.fitnes.domain.User;
 import rs.ac.bg.fon.nst.fitnes.domain.Vezba;
+import rs.ac.bg.fon.nst.fitnes.dto.PlanTreningaGenerationRequest;
 import rs.ac.bg.fon.nst.fitnes.dto.PlanTreningaRequest;
 import rs.ac.bg.fon.nst.fitnes.dto.PlanTreningaResponse;
 import rs.ac.bg.fon.nst.fitnes.dto.PlanVezbeRequestItem;
@@ -127,7 +127,60 @@ public class PlanTreningaService {
                 .orElseThrow(() -> new ResourceNotFoundException("Korisnik sa emailom " + email + " nije pronađen."));
     }
     
+    @Transactional
+public List<PlanTreningaResponse> generatePersonalizedPlan(PlanTreningaGenerationRequest request) {
+  
+    User currentUser = getAuthenticatedUser();
+
+
+    List<Vezba> sveVezbe = new ArrayList<>();
+    for (String grupa : request.getGrupeMisica()) {
+        sveVezbe.addAll(vezbaRepository.findByGrupaMisicaNazivIgnoreCase(grupa));
+    }
+
+   
+    if (sveVezbe.isEmpty()) {
+        throw new ResourceNotFoundException("Nijedna vežba nije pronađena za izabrane mišićne grupe.");
+    }
+
+    List<PlanTreninga> kreiraniPlanovi = new ArrayList<>();
+    int vezbePoDanu = 7;
+    LocalDateTime danasnjiDatum = LocalDateTime.now();
+
+  
+    for (int dan = 0; dan < request.getBrojDana(); dan++) {
+      
+        PlanTreninga noviPlan = new PlanTreninga();
+        noviPlan.setNaziv(request.getNazivPlana() + " - Dan " + (dan + 1));
+        noviPlan.setVezbac(currentUser);
+        noviPlan.setPlanoviVezbi(new ArrayList<>());
+        noviPlan.setDatum(danasnjiDatum.plusDays(dan));
+
+       
+        Collections.shuffle(sveVezbe);
+
+       
+        List<Vezba> odabraneVezbeZaDan = sveVezbe.subList(0, Math.min(vezbePoDanu, sveVezbe.size()));
+
+        
+        for (Vezba vezba : odabraneVezbeZaDan) {
+            PlanVezbe planVezbe = new PlanVezbe();
+            planVezbe.setPlanTreninga(noviPlan);
+            planVezbe.setVezba(vezba);
+            planVezbe.setBrojSerija(vezba.getPreporuceniBrojSerija());
+            planVezbe.setBrojPonavljanja(vezba.getPreporuceniBrojPonavljanja());
+            planVezbe.setDatum(noviPlan.getDatum().toLocalDate());
+            noviPlan.getPlanoviVezbi().add(planVezbe);
+        }
+
+       
+        kreiraniPlanovi.add(noviPlan);
+    }
+
     
+    List<PlanTreninga> savedPlans = planTreningaRepository.saveAll(kreiraniPlanovi);
+    return planTreningaMapper.toPlanTreningaResponseList(savedPlans);
+}
    
 
 }

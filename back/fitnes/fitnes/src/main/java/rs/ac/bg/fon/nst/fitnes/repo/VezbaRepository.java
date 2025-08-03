@@ -5,12 +5,13 @@
 package rs.ac.bg.fon.nst.fitnes.repo;
 
 
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import rs.ac.bg.fon.nst.fitnes.domain.Vezba;
 
 @Repository
 public interface VezbaRepository extends JpaRepository<Vezba, Long> {
-     
+        List<Vezba> findByGrupaMisicaNazivIgnoreCase(String grupaMisicaNaziv);
 }
 
