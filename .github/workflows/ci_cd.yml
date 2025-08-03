@@ -1,0 +1,66 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  BACKEND_IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/fitnes-backend
+  FRONTEND_IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/fitnes-frontend
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: 'maven'
+
+    - name: Build and run tests with Maven for backend
+      run: mvn clean install 
+      working-directory: back/fitnes/fitnes
+      
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Install dependencies and build frontend
+      run: npm install
+      working-directory: front/fitness-app-frontend
+      
+  build-and-push-docker:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and push backend Docker image
+      run: |
+        docker build -t $BACKEND_IMAGE_NAME:${{ github.sha }} -t $BACKEND_IMAGE_NAME:latest ./back/fitnes/fitnes
+        docker push $BACKEND_IMAGE_NAME:${{ github.sha }}
+        docker push $BACKEND_IMAGE_NAME:latest
+    
+    - name: Build and push frontend Docker image
+      run: |
+        docker build -t $FRONTEND_IMAGE_NAME:${{ github.sha }} -t $FRONTEND_IMAGE_NAME:latest ./front/fitness-app-frontend
+        docker push $FRONTEND_IMAGE_NAME:${{ github.sha }}
+        docker push $FRONTEND_IMAGE_NAME:latest
